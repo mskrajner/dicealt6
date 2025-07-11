@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Discussion Prompts</title>
+  <style>
+    body { 
+      background: black; color: white; font-size: 24px; font-weight: normal;
+      display: flex; align-items: center; justify-content: center; height: 100vh;
+      margin: 0; text-align: center;
+      transition: background 0.5s, color 0.5s;
+    }
+    .bold { font-size: 36px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="message">Turn your phone upright to get a question!</div>
+
+  <script>
+    const questions = [
+      "What does a perfect day look like for you now?",
+      "Would you rather enjoy a cup of tea with an old friend or meet someone new?",
+      "What’s a place from your past you’d love to show your family?",
+      "Do you think people were more polite in the past or just differently so?",
+      "What’s a small joy that makes your mornings brighter?",
+      "Is there a favorite piece of furniture or décor you’ve held onto over the years?",
+      "Would you rather listen to birds in the morning or crickets at night?",
+      "What accomplishment makes you most proud looking back?",
+      "Do you think people today move through life too quickly?",
+      "What was your favorite outdoor activity growing up?",
+      "Would you rather receive a handwritten note or a phone call?",
+      "Is there a saying or proverb that has stuck with you through life?",
+      "What season best matches your personality?",
+      "Do you like sharing recipes or hearing about others’ favorite foods more?",
+      "Was there ever a trip or vacation that changed your perspective?",
+      "Would you rather stroll through a garden or sit by a fireplace?",
+      "What quality in people do you admire most?",
+      "Is there something from your youth you wish would come back into style?",
+      "How have you stayed connected with people who moved far away?",
+      "If you could relive one ordinary afternoon, what would you do?"
+    ];
+
+    let hasQuestion = false;
+
+    function getRecentQuestions() {
+      const data = localStorage.getItem('recentQuestions');
+      return data ? JSON.parse(data) : {};
+    }
+
+    function updateRecentQuestions(index) {
+      const data = getRecentQuestions();
+      data[index] = Date.now();
+      localStorage.setItem('recentQuestions', JSON.stringify(data));
+    }
+
+    function pickQuestion() {
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      const data = getRecentQuestions();
+      const availableIndexes = questions
+        .map((_, i) => i)
+        .filter(i => !data[i] || data[i] < oneHourAgo);
+
+      if (availableIndexes.length === 0) {
+        localStorage.removeItem('recentQuestions');
+        return pickQuestion();
+      }
+
+      const chosenIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+      updateRecentQuestions(chosenIndex);
+      return questions[chosenIndex];
+    }
+
+    function applyHighlight(show) {
+      const msg = document.getElementById('message');
+      if (show) {
+        if (!hasQuestion) {
+          hasQuestion = true;
+          const question = pickQuestion();
+          document.body.style.background = 'yellow';
+          msg.style.color = 'black';
+          msg.textContent = question;
+          msg.classList.add('bold');
+        }
+      } else {
+        hasQuestion = false;
+        document.body.style.background = 'black';
+        msg.style.color = 'white';
+        msg.textContent = "Turn your phone upright to get a question!";
+        msg.classList.remove('bold');
+      }
+    }
+
+    function handleOrientation() {
+      const o = screen.orientation?.type || window.orientation;
+      const isPortrait = (typeof o === 'string' && o.includes('portrait')) ||
+                         (typeof o === 'number' && (o === 0 || o === 180));
+      applyHighlight(isPortrait);
+    }
+
+    function handleMotion(event) {
+      const x = event.accelerationIncludingGravity?.x || 0;
+      const y = event.accelerationIncludingGravity?.y || 0;
+      const z = event.accelerationIncludingGravity?.z || 0;
+      const isUpright = Math.abs(z) > Math.abs(x) && Math.abs(z) > Math.abs(y) && z > 0;
+      applyHighlight(isUpright);
+    }
+
+    function initListeners() {
+      if ('DeviceMotionEvent' in window) {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+          DeviceMotionEvent.requestPermission().then(response => {
+            if (response === 'granted') {
+              window.addEventListener('devicemotion', handleMotion);
+            } else {
+              fallbackToOrientation();
+            }
+          }).catch(fallbackToOrientation);
+        } else {
+          window.addEventListener('devicemotion', handleMotion);
+        }
+      } else {
+        fallbackToOrientation();
+      }
+    }
+
+    function fallbackToOrientation() {
+      if ('screen' in window && 'orientation' in screen) {
+        screen.orientation.addEventListener('change', handleOrientation);
+        handleOrientation();
+      } else if ('orientation' in window) {
+        window.addEventListener('orientationchange', handleOrientation);
+        handleOrientation();
+      } else {
+        alert('Orientation detection not supported.');
+      }
+    }
+
+    initListeners();
+  </script>
+</body>
+</html>
